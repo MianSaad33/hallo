@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mini Shooter</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#111; }
+    canvas { display:block; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script src="game.js"></script>
+</body>
+</html>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+class Entity {
+  constructor(x,y,r,c,vx,vy){
+    Object.assign(this,{x,y,r,c,vx,vy});
+  }
+  draw(){ ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,2*Math.PI); ctx.fillStyle=this.c; ctx.fill(); }
+  update(){
+    this.draw();
+    this.x += this.vx; this.y += this.vy;
+  }
+}
+
+const player = new Entity(canvas.width/2, canvas.height/2, 15, 'white', 0, 0);
+const projectiles = [];
+const enemies = [];
+let score = 0;
+
+function spawnEnemy(){
+  const r = 20;
+  let x = Math.random() < 0.5 ? -r : canvas.width + r;
+  let y = Math.random() * canvas.height;
+  const angle = Math.atan2(player.y-y, player.x-x);
+  const speed = 1 + Math.random();
+  enemies.push(new Entity(x, y, r, 'red', Math.cos(angle)*speed, Math.sin(angle)*speed));
+}
+setInterval(spawnEnemy, 1000);
+
+addEventListener('click', e => {
+  const angle = Math.atan2(e.clientY - player.y, e.clientX - player.x);
+  projectiles.push(new Entity(player.x, player.y, 5, 'cyan', Math.cos(angle)*5, Math.sin(angle)*5));
+});
+
+function animate(){
+  requestAnimationFrame(animate);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  player.draw();
+
+  for (let i = projectiles.length-1; i >= 0; i--){
+    const p = projectiles[i];
+    p.update();
+    if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) projectiles.splice(i,1);
+  }
+
+  for (let j = enemies.length-1; j >= 0; j--){
+    const e = enemies[j];
+    e.update();
+    const dist = Math.hypot(e.x - player.x, e.y - player.y);
+    if (dist < e.r + player.r) {
+      cancelAnimationFrame(animate); alert(`Game Over! Score: ${score}`); return;
+    }
+    for (let k = projectiles.length-1; k >=0; k--){
+      const p = projectiles[k];
+      if (Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r){
+        score += 100;
+        enemies.splice(j,1);
+        projectiles.splice(k,1);
+        break;
+      }
+    }
+  }
+
+  ctx.fillStyle = 'white';
+  ctx.font = '20px sans-serif';
+  ctx.fillText(`Score: ${score}`, 20, 30);
+}
+
+animate();
